@@ -46,6 +46,7 @@
 #endif
 
 #if NET6_0_OR_GREATER
+using System.Globalization;
 using System.Text;
 #endif
 
@@ -148,19 +149,31 @@ public
     }
 
 #if NET6_0_OR_GREATER
-    public static int GetWidth(string value, Unicode? version = null)
+    public static int GetWidth(ReadOnlySpan<char> value, Unicode? version = null)
     {
         version ??= Latest;
 
-        var runes = value.EnumerateRunes().ToArray();
-        var end = runes.Length;
-
         var width = 0;
-        var index = 0;
         var lastMeasureRune = default(Rune?);
-        while (index < end)
+        for (int loopIndex = 0, index = 0, charIndex = 0; charIndex < value.Length; loopIndex++)
         {
-            var rune = runes[index];
+            Rune rune = default;
+
+            if (char.IsSurrogate(value[charIndex]))
+            {
+                if (charIndex + 1 >= value.Length) throw new ArgumentException();
+                if (!char.IsHighSurrogate(value[charIndex])) throw new ArgumentException();
+                if (!char.IsLowSurrogate(value[charIndex + 1])) throw new ArgumentException();
+                rune = new Rune(char.ConvertToUtf32(value[charIndex], value[charIndex + 1]));
+                charIndex += 2;
+            }
+            else
+            {
+                rune = new Rune(value[charIndex]);
+                charIndex++;
+            }
+
+            if (loopIndex < index) continue;
 
             if (rune.Value == '\u200D')
             {
@@ -201,6 +214,58 @@ public
 
             width += wcw;
             index++;
+        }
+
+        return width;
+    }
+
+    public static int GetWidth(ReadOnlySpan<Rune> value, Unicode? version = null)
+    {
+        version ??= Latest;
+
+        var width = 0;
+        var lastMeasureRune = default(Rune?);
+        for (var index = 0; index < value.Length; index++)
+        {
+            Rune rune = value[index];
+
+            if (rune.Value == '\u200D')
+            {
+                // Zero Width Joiner, do not measure this or next character
+                index++;
+                continue;
+            }
+
+            if (rune.Value == '\uFE0F' && lastMeasureRune != null)
+            {
+                // on variation selector 16 (VS16) following another character,
+                // conditionally add '1' to the measured width if that character is
+                // known to be converted from narrow to wide by the VS16 character.
+                if (version >= Unicode.Version_9_0_0)
+                {
+                    width += Vs16Table.GetTable(Unicode.Version_9_0_0).Find(lastMeasureRune.Value.Value);
+                    lastMeasureRune = null;
+                }
+
+                continue;
+            }
+
+            // Measure rune at current index
+            var wcw = GetWidth(rune, version);
+            if (wcw < 0)
+            {
+                // Early return -1 on C0 and C1 control characters
+                return wcw;
+            }
+
+            if (wcw > 0)
+            {
+                // Track last character measured to contain a cell, so that
+                // subsequent VS-16 modifiers may be understood.
+                lastMeasureRune = rune;
+            }
+
+            width += wcw;
         }
 
         return width;
