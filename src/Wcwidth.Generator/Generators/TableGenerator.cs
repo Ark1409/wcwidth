@@ -18,8 +18,9 @@ public static class TableGenerator
                     wide: 0).Values);
 
             // Also subtract Hangul Jamo Vowels and Hangul Trailing Consonants
-            table.Values.ExceptWith(Enumerable.RangeStartEnd(0x1160, 0x1200));
-            table.Values.ExceptWith(Enumerable.RangeStartEnd(0xD7B0, 0xD800));
+
+            table.Values.ExceptWith(Enumerable.Range(0x1160, 0x1200 - 0x1160 + 1));
+            table.Values.ExceptWith(Enumerable.Range(0xD7B0, 0xD800 - 0xD7B0 + 1));
 
             // Finally, join with atypical 'wide' characters defined by category 'Sk',
             table.Values.AddRange(
@@ -54,9 +55,9 @@ public static class TableGenerator
             table.Values.Add(0);
 
             // Add Hangul Jungseong Filler … Hangul Jongseong Ssangnieun
-            table.Values.AddRange(Enumerable.RangeStartEnd(0x1160, 0x1200));
+            table.Values.AddRange(Enumerable.Range(0x1160, 0x1200 - 0x1160 + 1));
             // Add Hangul Jungseong O-Yeo  … Undefined Character of Hangul Jamo Extended-B
-            table.Values.AddRange(Enumerable.RangeStartEnd(0xD7B0, 0xD800));
+            table.Values.AddRange(Enumerable.Range(0xD7B0, 0xD800 - 0xD7B0 + 1));
 
             // Remove SOFT HYPHEN
             table.Values.Remove(0x00AD);

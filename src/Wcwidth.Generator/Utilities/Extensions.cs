@@ -2,86 +2,63 @@ namespace Wcwidth.Generator;
 
 public static class Extensions
 {
-    extension(Match match)
+    public static string? GetGroupValue(this Match match, string group, string? defaultValue = null)
     {
-        public string? GetGroupValue(string group, string? defaultValue = null)
+        if (match is null)
         {
-            if (match is null)
-            {
-                throw new ArgumentNullException(nameof(match));
-            }
+            throw new ArgumentNullException(nameof(match));
+        }
 
-            return match.Groups[group].Success
-                ? match.Groups[group].Value
-                : defaultValue;
+        return match.Groups[group].Success
+            ? match.Groups[group].Value
+            : defaultValue;
+    }
+
+    private static IEnumerable<(int Index, T Item)> Enumerate<T>(this IEnumerator<T> source)
+    {
+        if (source is null)
+        {
+            throw new ArgumentNullException(nameof(source));
+        }
+
+        var last = !source.MoveNext();
+
+        for (var index = 0; !last; index++)
+        {
+            var current = source.Current;
+            last = !source.MoveNext();
+            yield return (index, current);
         }
     }
 
-    extension<T>(IEnumerator<T> source)
+    public static IEnumerable<(int Index, T Item)> Enumerate<T>(this IEnumerable<T> source)
     {
-        private IEnumerable<(int Index, T Item)> Enumerate()
+        if (source is null)
         {
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
+            throw new ArgumentNullException(nameof(source));
+        }
 
-            var last = !source.MoveNext();
+        return Enumerate(source.GetEnumerator());
+    }
 
-            for (var index = 0; !last; index++)
-            {
-                var current = source.Current;
-                last = !source.MoveNext();
-                yield return (index, current);
-            }
+    public static void AddRange<T>(this HashSet<T> source, IEnumerable<T> items)
+    {
+        foreach (var item in items)
+        {
+            source.Add(item);
         }
     }
 
-    extension<T>(IEnumerable<T> source)
+    public static (string Before, string After) Partition(this string text, string separator)
     {
-        public IEnumerable<(int Index, T Item)> Enumerate()
+        var index = text.IndexOf(separator, StringComparison.Ordinal);
+        if (index == -1)
         {
-            if (source is null)
-            {
-                throw new ArgumentNullException(nameof(source));
-            }
-
-            return Enumerate(source.GetEnumerator());
+            return (text, string.Empty);
         }
-    }
 
-    extension(Enumerable)
-    {
-        public static IEnumerable<int> RangeStartEnd(int start, int end)
-        {
-            return Enumerable.Range(start, end - start + 1);
-        }
-    }
-
-    extension<T>(HashSet<T> source)
-    {
-        public void AddRange(IEnumerable<T> items)
-        {
-            foreach (var item in items)
-            {
-                source.Add(item);
-            }
-        }
-    }
-
-    extension(string text)
-    {
-        public (string Before, string After) Partition(string separator)
-        {
-            var index = text.IndexOf(separator, StringComparison.Ordinal);
-            if (index == -1)
-            {
-                return (text, string.Empty);
-            }
-
-            return (
-                text[..index],
-                text.Substring(index, text.Length - index));
-        }
+        return (
+            text[..index],
+            text.Substring(index, text.Length - index));
     }
 }
